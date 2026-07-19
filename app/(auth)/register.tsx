@@ -11,6 +11,11 @@ function validatePassword(password: string): string | null {
   return null
 }
 
+function passwordHintColor(password: string): string {
+  if (!password) return '#94A3B8'
+  return validatePassword(password) ? '#EF4444' : '#22C55E'
+}
+
 export default function RegisterScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -85,7 +90,6 @@ export default function RegisterScreen() {
           secureTextEntry
         />
         {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-        <Text style={styles.hint}>Mínimo 6 caracteres, 1 mayúscula, 1 minúscula, 1 número</Text>
 
         <TextInput
           style={[styles.input, errors.confirmPassword && styles.inputError]}
@@ -96,6 +100,7 @@ export default function RegisterScreen() {
           secureTextEntry
         />
         {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+        <Text style={[styles.hint, { color: passwordHintColor(password) }]}>Mínimo 6 caracteres, 1 mayúscula, 1 minúscula, 1 número</Text>
 
         <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleRegister} disabled={loading}>
           <Text style={styles.buttonText}>{loading ? 'Registrando...' : 'Registrarse'}</Text>
