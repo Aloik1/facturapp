@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native'
 import { router } from 'expo-router'
 import { useAuth } from '../../lib/AuthContext'
@@ -18,6 +18,8 @@ export default function ProfileScreen() {
   const { session } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const successRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const [businessName, setBusinessName] = useState('')
   const [businessNif, setBusinessNif] = useState('')
   const [address, setAddress] = useState('')
@@ -55,7 +57,9 @@ export default function ProfileScreen() {
     if (error) {
       Alert.alert('Error', error.message)
     } else {
-      Alert.alert('Perfil actualizado', 'Tus datos se han guardado correctamente.')
+      setSuccess(true)
+      clearTimeout(successRef.current)
+      successRef.current = setTimeout(() => setSuccess(false), 3000)
     }
   }
 
@@ -106,6 +110,7 @@ export default function ProfileScreen() {
       <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={handleSave} disabled={saving}>
         <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
       </TouchableOpacity>
+      {success && <Text style={styles.successText}>Perfil actualizado correctamente</Text>}
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
         <Text style={styles.logoutText}>Cerrar sesión</Text>
@@ -134,6 +139,7 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: '#2563EB', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  successText: { color: '#22C55E', fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 12 },
   logoutButton: { backgroundColor: '#FEF2F2', borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 24, marginBottom: 40 },
   logoutText: { color: '#DC2626', fontSize: 16, fontWeight: '600' },
 })
