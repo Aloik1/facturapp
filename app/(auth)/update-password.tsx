@@ -24,24 +24,12 @@ export default function UpdatePasswordScreen() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    const hash = window.location.hash
-    if (!hash || !hash.includes('type=recovery')) {
-      setError('Enlace inválido o caducado. Solicita un nuevo restablecimiento.')
-      return
-    }
-    const params = new URLSearchParams(hash.replace('#', '?'))
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
-    if (!accessToken) {
-      setError('Enlace inválido o caducado. Solicita un nuevo restablecimiento.')
-      return
-    }
-    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || '' }).then(({ error }) => {
-      if (error) {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setReady(true)
+      } else {
         setError('Enlace inválido o caducado. Solicita un nuevo restablecimiento.')
-        return
       }
-      setReady(true)
     })
   }, [])
 
