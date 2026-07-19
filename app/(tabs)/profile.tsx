@@ -25,6 +25,7 @@ export default function ProfileScreen() {
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [sector, setSector] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -41,8 +42,15 @@ export default function ProfileScreen() {
   }, [session])
 
   async function handleSave() {
-    if (!businessName.trim() || !businessNif.trim() || !address.trim() || !sector) {
-      Alert.alert('Error', 'Todos los campos obligatorios deben estar rellenos')
+    setErrors({})
+    const newErrors: Record<string, string> = {}
+    if (!businessName.trim()) newErrors.businessName = 'Campo obligatorio'
+    if (!businessNif.trim()) newErrors.businessNif = 'Campo obligatorio'
+    if (!address.trim()) newErrors.address = 'Campo obligatorio'
+    if (!sector) newErrors.sector = 'Selecciona un sector'
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
       return
     }
     setSaving(true)
@@ -87,24 +95,27 @@ export default function ProfileScreen() {
       <Text style={styles.title}>Mi perfil</Text>
 
       <Text style={styles.label}>Nombre del negocio *</Text>
-      <TextInput style={styles.input} value={businessName} onChangeText={setBusinessName} placeholder="Nombre" placeholderTextColor="#94A3B8" />
+      <TextInput style={[styles.input, errors.businessName && styles.inputError]} value={businessName} onChangeText={(t) => { setBusinessName(t); setErrors((e) => ({ ...e, businessName: '' })) }} placeholder="Nombre" placeholderTextColor="#94A3B8" />
+      {errors.businessName && <Text style={styles.errorText}>{errors.businessName}</Text>}
 
       <Text style={styles.label}>CIF / NIF *</Text>
-      <TextInput style={styles.input} value={businessNif} onChangeText={setBusinessNif} placeholder="CIF/NIF" placeholderTextColor="#94A3B8" autoCapitalize="characters" />
+      <TextInput style={[styles.input, errors.businessNif && styles.inputError]} value={businessNif} onChangeText={(t) => { setBusinessNif(t); setErrors((e) => ({ ...e, businessNif: '' })) }} placeholder="CIF/NIF" placeholderTextColor="#94A3B8" autoCapitalize="characters" />
+      {errors.businessNif && <Text style={styles.errorText}>{errors.businessNif}</Text>}
 
       <Text style={styles.label}>Dirección *</Text>
-      <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Dirección" placeholderTextColor="#94A3B8" />
+      <TextInput style={[styles.input, errors.address && styles.inputError]} value={address} onChangeText={(t) => { setAddress(t); setErrors((e) => ({ ...e, address: '' })) }} placeholder="Dirección" placeholderTextColor="#94A3B8" />
+      {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
 
       <Text style={styles.label}>Teléfono</Text>
       <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Teléfono (opcional)" placeholderTextColor="#94A3B8" keyboardType="phone-pad" />
 
       <Text style={styles.label}>Sector *</Text>
-      <View style={styles.sectorGrid}>
+      <View style={[styles.sectorGrid, errors.sector && { marginBottom: 4 }]}>
         {SECTORS.map((s) => (
           <TouchableOpacity
             key={s.value}
             style={[styles.sectorBtn, sector === s.value && styles.sectorBtnActive]}
-            onPress={() => setSector(s.value)}
+            onPress={() => { setSector(s.value); setErrors((e) => ({ ...e, sector: '' })) }}
           >
             <Text style={[styles.sectorBtnText, sector === s.value && styles.sectorBtnTextActive]}>
               {s.label}
@@ -112,6 +123,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         ))}
       </View>
+      {errors.sector && <Text style={styles.errorText}>{errors.sector}</Text>}
 
       <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={handleSave} disabled={saving}>
         <Text style={styles.saveBtnText}>{saving ? 'Guardando...' : 'Guardar cambios'}</Text>
@@ -132,8 +144,10 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '600', color: '#0F172A', marginBottom: 6 },
   input: {
     borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 14,
-    paddingVertical: 12, fontSize: 16, backgroundColor: '#F8FAFC', marginBottom: 16,
+    paddingVertical: 12, fontSize: 16, backgroundColor: '#F8FAFC', marginBottom: 4,
   },
+  inputError: { borderColor: '#EF4444' },
+  errorText: { color: '#EF4444', fontSize: 13, marginBottom: 12, marginLeft: 4 },
   sectorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   sectorBtn: {
     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#F1F5F9',
