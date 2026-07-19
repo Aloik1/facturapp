@@ -1,9 +1,23 @@
-import { Stack, Redirect } from 'expo-router'
+import { Stack, router, useSegments } from 'expo-router'
+import { useEffect } from 'react'
 import { ActivityIndicator, View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { AuthProvider, useAuth } from '../lib/AuthContext'
 
 function RootLayout() {
   const { session, loading, error } = useAuth()
+  const segments = useSegments()
+
+  useEffect(() => {
+    if (loading || error) return
+
+    const inAuthGroup = segments[0] === '(auth)'
+
+    if (!session && !inAuthGroup) {
+      router.replace('/(auth)/login')
+    } else if (session && inAuthGroup) {
+      router.replace('/(tabs)')
+    }
+  }, [session, loading, error, segments])
 
   if (loading) {
     return (
@@ -27,12 +41,9 @@ function RootLayout() {
     )
   }
 
-  if (!session) {
-    return <Redirect href="/(auth)/login" />
-  }
-
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   )
