@@ -1,5 +1,4 @@
-import { Tabs } from 'expo-router'
-import { Redirect } from 'expo-router'
+import { Tabs, Redirect } from 'expo-router'
 import { useAuth } from '../../lib/AuthContext'
 
 export default function TabsLayout() {
@@ -20,10 +19,18 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="scan"
+        name="new"
         options={{
-          title: 'Escanear',
-          tabBarLabel: 'Escanear',
+          title: 'Nueva',
+          tabBarLabel: 'Nueva',
+          tabBarIcon: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="clients"
+        options={{
+          title: 'Clientes',
+          tabBarLabel: 'Clientes',
           tabBarIcon: () => null,
         }}
       />
