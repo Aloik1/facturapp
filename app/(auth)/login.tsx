@@ -7,27 +7,33 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleLogin() {
-    if (!email || !password) {
-      Alert.alert('Error', 'Email y contraseña son obligatorios')
+    setError('')
+    if (!email.trim() || !password) {
+      setError('Email y contraseña son obligatorios')
       return
     }
     setLoading(true)
-    const { error } = await signIn(email, password)
-    setLoading(false)
-    if (error) {
-      if (error.message.includes('Email not confirmed')) {
-        Alert.alert(
-          'Email no confirmado',
-          'Revisa tu bandeja de entrada (y la de spam). Confirma tu email antes de iniciar sesión. Si no encuentras el email, regístrate de nuevo para recibir otro.'
-        )
-      } else {
-        Alert.alert('Error', error.message)
+    try {
+      const { error } = await signIn(email.trim(), password)
+      if (error) {
+        if (error.message.includes('Email not confirmed')) {
+          setError('Email no confirmado. Revisa tu bandeja de entrada.')
+        } else if (error.message.includes('Invalid login credentials')) {
+          setError('Email o contraseña incorrectos')
+        } else {
+          setError(error.message)
+        }
+        return
       }
-      return
+      router.replace('/(tabs)')
+    } catch (err: any) {
+      setError(err?.message || 'Error de conexión. Inténtalo de nuevo.')
+    } finally {
+      setLoading(false)
     }
-    router.replace('/(tabs)')
   }
 
   return (
@@ -37,22 +43,23 @@ export default function LoginScreen() {
         <Text style={styles.subtitle}>Inicia sesión en tu cuenta</Text>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, error && styles.inputError]}
           placeholder="Email"
           placeholderTextColor="#94A3B8"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(v) => { setEmail(v); setError('') }}
           autoCapitalize="none"
           keyboardType="email-address"
         />
         <TextInput
-          style={styles.input}
+          style={[styles.input, error && styles.inputError]}
           placeholder="Contraseña"
           placeholderTextColor="#94A3B8"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(v) => { setPassword(v); setError('') }}
           secureTextEntry
         />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleLogin} disabled={loading}>
           <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
@@ -72,6 +79,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 32, fontWeight: '700', color: '#2563EB', textAlign: 'center', marginBottom: 8 },
   subtitle: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 32 },
   input: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, marginBottom: 16, backgroundColor: '#F8FAFC' },
+  inputError: { borderColor: '#EF4444' },
+  errorText: { color: '#EF4444', fontSize: 13, marginBottom: 12, marginLeft: 4 },
   button: { backgroundColor: '#2563EB', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
