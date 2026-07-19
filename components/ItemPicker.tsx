@@ -20,9 +20,16 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [focused, setFocused] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const blurRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
+    if (!focused) {
+      setShowSuggestions(false)
+      return
+    }
+
     clearTimeout(debounceRef.current)
 
     if (query.length === 0) {
@@ -41,7 +48,17 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
       setSuggestions(items.map((i) => ({ ...i, _type: 'user' in i ? 'user' as const : 'common' as const })))
       setShowSuggestions(items.length > 0)
     }, 300)
-  }, [query, userId, sector])
+  }, [query, userId, sector, focused])
+
+  function handleFocus() {
+    setFocused(true)
+  }
+
+  function handleBlur() {
+    blurRef.current = setTimeout(() => {
+      setFocused(false)
+    }, 200)
+  }
 
   function handleSelect(item: SuggestionItem) {
     onSelect({
@@ -51,7 +68,15 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
       tax_pct: item.tax_pct,
     })
     setQuery('')
-    setShowSuggestions(false)
+    setFocused(false)
+    clearTimeout(blurRef.current)
+  }
+
+  function handleAddBlank() {
+    onAddBlank()
+    setQuery('')
+    setFocused(false)
+    clearTimeout(blurRef.current)
   }
 
   return (
@@ -61,8 +86,9 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
         placeholder="Buscar partida..."
         placeholderTextColor="#94A3B8"
         value={query}
-        onChangeText={(t) => { setQuery(t); setShowSuggestions(true) }}
-        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+        onChangeText={(t) => { setQuery(t) }}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       />
 
       {showSuggestions && (
@@ -88,7 +114,7 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
               )
             }}
             ListFooterComponent={() => (
-              <TouchableOpacity style={styles.blankBtn} onPress={() => { onAddBlank(); setShowSuggestions(false); setQuery('') }}>
+              <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
                 <Text style={styles.blankBtnText}>+ Partida vacía</Text>
               </TouchableOpacity>
             )}
@@ -97,7 +123,7 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
       )}
 
       {query.length > 0 && !showSuggestions && (
-        <TouchableOpacity style={styles.blankBtn} onPress={() => { onAddBlank(); setQuery(''); setShowSuggestions(false) }}>
+        <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
           <Text style={styles.blankBtnText}>+ Crear "{query}"</Text>
         </TouchableOpacity>
       )}
