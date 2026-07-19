@@ -14,7 +14,7 @@ export async function getProfile(userId: string) {
 export async function upsertProfile(userId: string, profile: ProfileUpdate) {
   const { data, error } = await supabase
     .from('profiles')
-    .upsert({ ...profile, user_id: userId })
+    .upsert({ ...profile, user_id: userId }, { onConflict: 'user_id' })
     .select()
     .single()
 
