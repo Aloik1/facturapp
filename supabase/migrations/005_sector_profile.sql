@@ -5,7 +5,10 @@
 alter table public.profiles add column if not exists sector text;
 alter table public.profiles add column if not exists phone text;
 
--- Actualizar trigger para que cree perfil con sector null
+-- Backfill: usuarios existentes sin sector → 'otro'
+update public.profiles set sector = 'otro' where sector is null;
+
+-- Actualizar trigger para que cree perfil con sector null (se rellena en onboarding)
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql security definer
