@@ -56,7 +56,7 @@ export default function UpdatePasswordScreen() {
       setSuccess(true)
       if (!redirectRef.current) {
         redirectRef.current = true
-        setTimeout(() => router.replace('/(auth)/login'), 1500)
+        setTimeout(() => router.replace('/(tabs)'), 1500)
       }
     } catch (err: any) {
       setError(err?.message || 'Error de conexión. Inténtalo de nuevo.')
