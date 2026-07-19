@@ -54,8 +54,8 @@ export default function RegisterScreen() {
       }
       Alert.alert(
         'Cuenta creada',
-        'Registro completado. Ahora puedes iniciar sesión.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
+        'Registro completado. Completa tu perfil para empezar.',
+        [{ text: 'OK', onPress: () => router.replace('/(auth)/onboarding') }]
       )
     } catch (err: any) {
       setErrors({ email: err?.message || 'Error de conexión. Inténtalo de nuevo.' })

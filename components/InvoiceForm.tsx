@@ -1,81 +1,134 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native'
 import ClientPicker from './ClientPicker'
+import ItemPicker from './ItemPicker'
+import { saveUserItems } from '../services/items'
 import type { InvoiceItem, InvoiceInsert } from '../types/database'
 
 const TAX_OPTIONS = [21, 10, 4, 0]
+const UNIT_OPTIONS = ['uds', 'ml', 'm²', 'h', 'kg', 'paq', 'viaje']
 
 interface InvoiceFormProps {
+  userId: string
+  sector: string
   onSubmit: (invoice: InvoiceInsert) => Promise<{ error?: { message: string } | null }>
-  initialValues?: {
-    client_name?: string
-    client_nif?: string
-    description?: string
-    amount?: number
-    tax_pct?: number
+}
+
+interface LineItem {
+  id: string
+  description: string
+  quantity: string
+  unit: string
+  unitPrice: string
+  taxPct: number
+}
+
+let lineIdCounter = 0
+function nextLineId() {
+  return (++lineIdCounter).toString()
+}
+
+function newBlankLine(): LineItem {
+  return {
+    id: nextLineId(),
+    description: '',
+    quantity: '1',
+    unit: 'uds',
+    unitPrice: '',
+    taxPct: 21,
   }
 }
 
-export default function InvoiceForm({ onSubmit, initialValues }: InvoiceFormProps) {
-  const [clientName, setClientName] = useState(initialValues?.client_name ?? '')
-  const [clientNif, setClientNif] = useState(initialValues?.client_nif ?? '')
-  const [description, setDescription] = useState(initialValues?.description ?? '')
-  const [quantity, setQuantity] = useState('1')
-  const [unitPrice, setUnitPrice] = useState(initialValues?.amount?.toString() ?? '')
-  const [taxPct, setTaxPct] = useState(initialValues?.tax_pct ?? 21)
+function calcLine(line: LineItem) {
+  const qty = parseFloat(line.quantity) || 0
+  const price = parseFloat(line.unitPrice) || 0
+  const base = qty * price
+  const tax = base * (line.taxPct / 100)
+  return { base, tax, total: base + tax }
+}
+
+export default function InvoiceForm({ userId, sector, onSubmit }: InvoiceFormProps) {
+  const [clientName, setClientName] = useState('')
+  const [clientNif, setClientNif] = useState('')
+  const [lines, setLines] = useState<LineItem[]>([newBlankLine()])
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const qty = parseFloat(quantity) || 0
-  const price = parseFloat(unitPrice) || 0
-  const base = qty * price
-  const taxAmount = base * (taxPct / 100)
-  const total = base + taxAmount
+  const totals = lines.reduce(
+    (acc, line) => {
+      const { base, tax } = calcLine(line)
+      return { base: acc.base + base, tax: acc.tax + tax, total: acc.total + base + tax }
+    },
+    { base: 0, tax: 0, total: 0 }
+  )
 
-  function isValid() {
-    return clientName.trim() && clientNif.trim() && description.trim() && base > 0
+  function addLine(item?: { description: string; unit: string; unit_price: number; tax_pct: number }) {
+    if (item) {
+      setLines((prev) => [
+        ...prev,
+        {
+          id: nextLineId(),
+          description: item.description,
+          quantity: '1',
+          unit: item.unit,
+          unitPrice: item.unit_price > 0 ? item.unit_price.toFixed(2) : '',
+          taxPct: item.tax_pct,
+        },
+      ])
+    } else {
+      setLines((prev) => [...prev, newBlankLine()])
+    }
   }
 
-  function resetForm() {
-    setClientName('')
-    setClientNif('')
-    setDescription('')
-    setQuantity('1')
-    setUnitPrice('')
-    setTaxPct(21)
-    setNotes('')
+  function updateLine(id: string, updates: Partial<LineItem>) {
+    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)))
+  }
+
+  function removeLine(id: string) {
+    setLines((prev) => prev.filter((l) => l.id !== id))
+  }
+
+  function isValid() {
+    return (
+      clientName.trim() &&
+      clientNif.trim() &&
+      lines.length > 0 &&
+      lines.every((l) => l.description.trim() && (parseFloat(l.unitPrice) || 0) > 0)
+    )
   }
 
   async function handleSubmit() {
     if (!isValid()) return
-
     setSubmitting(true)
 
-    const items: InvoiceItem[] = [{
-      description: description.trim(),
-      quantity: qty,
-      unit_price: price,
-      tax_pct: taxPct,
-    }]
+    const items: InvoiceItem[] = lines.map((l) => ({
+      description: l.description.trim(),
+      quantity: parseFloat(l.quantity) || 1,
+      unit: l.unit,
+      unit_price: parseFloat(l.unitPrice) || 0,
+      tax_pct: l.taxPct,
+    }))
+
+    const baseAmount = Math.round(totals.base * 100) / 100
+    const taxAmount = Math.round(totals.tax * 100) / 100
+    const totalAmount = Math.round(totals.total * 100) / 100
 
     const result = await onSubmit({
       user_id: '',
       client_name: clientName.trim(),
       client_nif: clientNif.trim(),
       items,
-      base_amount: Math.round(base * 100) / 100,
-      tax_amount: Math.round(taxAmount * 100) / 100,
-      total_amount: Math.round(total * 100) / 100,
+      base_amount: baseAmount,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
       status: 'sent',
     })
 
-    setSubmitting(false)
-
-    if (result.error) {
-      Alert.alert('Error', result.error.message)
-    } else {
-      resetForm()
+    if (!result.error) {
+      saveUserItems(userId, items)
     }
+
+    setSubmitting(false)
   }
 
   return (
@@ -87,73 +140,115 @@ export default function InvoiceForm({ onSubmit, initialValues }: InvoiceFormProp
         onNifChange={setClientNif}
       />
 
-      <Text style={styles.label}>Concepto</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ej: Reforma baño"
-        placeholderTextColor="#94A3B8"
-        value={description}
-        onChangeText={setDescription}
+      <Text style={styles.sectionTitle}>Partidas</Text>
+
+      <ItemPicker
+        userId={userId}
+        sector={sector}
+        onSelect={(item) => addLine(item)}
+        onAddBlank={() => addLine()}
       />
 
-      <View style={styles.row}>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Cantidad</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="1"
-            placeholderTextColor="#94A3B8"
-            value={quantity}
-            onChangeText={setQuantity}
-            keyboardType="decimal-pad"
-          />
-        </View>
-        <View style={styles.halfInput}>
-          <Text style={styles.label}>Precio unitario (€)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor="#94A3B8"
-            value={unitPrice}
-            onChangeText={setUnitPrice}
-            keyboardType="decimal-pad"
-          />
-        </View>
-      </View>
+      {lines.map((line) => {
+        const { base, total } = calcLine(line)
+        return (
+          <View key={line.id} style={styles.itemCard}>
+            <View style={styles.itemHeader}>
+              <TextInput
+                style={styles.itemDesc}
+                placeholder="Descripción"
+                placeholderTextColor="#94A3B8"
+                value={line.description}
+                onChangeText={(t) => updateLine(line.id, { description: t })}
+              />
+              <TouchableOpacity onPress={() => removeLine(line.id)} style={styles.deleteBtn}>
+                <Text style={styles.deleteBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-      <Text style={styles.label}>IVA</Text>
-      <View style={styles.taxRow}>
-        {TAX_OPTIONS.map((pct) => (
-          <TouchableOpacity
-            key={pct}
-            style={[styles.taxBtn, taxPct === pct && styles.taxBtnActive]}
-            onPress={() => setTaxPct(pct)}
-          >
-            <Text style={[styles.taxBtnText, taxPct === pct && styles.taxBtnTextActive]}>
-              {pct}%
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+            <View style={styles.itemRow}>
+              <View style={styles.itemField}>
+                <Text style={styles.fieldLabel}>Cant</Text>
+                <TextInput
+                  style={styles.itemInput}
+                  placeholder="1"
+                  placeholderTextColor="#94A3B8"
+                  value={line.quantity}
+                  onChangeText={(t) => updateLine(line.id, { quantity: t })}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.itemField}>
+                <Text style={styles.fieldLabel}>Unidad</Text>
+                <View style={styles.unitPicker}>
+                  {UNIT_OPTIONS.map((u) => (
+                    <TouchableOpacity
+                      key={u}
+                      style={[styles.unitOption, line.unit === u && styles.unitOptionActive]}
+                      onPress={() => updateLine(line.id, { unit: u })}
+                    >
+                      <Text style={[styles.unitOptionText, line.unit === u && styles.unitOptionTextActive]}>
+                        {u}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.itemRow}>
+              <View style={styles.itemField}>
+                <Text style={styles.fieldLabel}>Precio / ud</Text>
+                <TextInput
+                  style={styles.itemInput}
+                  placeholder="0.00"
+                  placeholderTextColor="#94A3B8"
+                  value={line.unitPrice}
+                  onChangeText={(t) => updateLine(line.id, { unitPrice: t })}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.itemField}>
+                <Text style={styles.fieldLabel}>IVA</Text>
+                <View style={styles.taxRowSmall}>
+                  {TAX_OPTIONS.map((pct) => (
+                    <TouchableOpacity
+                      key={pct}
+                      style={[styles.taxOption, line.taxPct === pct && styles.taxOptionActive]}
+                      onPress={() => updateLine(line.id, { taxPct: pct })}
+                    >
+                      <Text style={[styles.taxOptionText, line.taxPct === pct && styles.taxOptionTextActive]}>
+                        {pct}%
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <Text style={styles.itemTotal}>Total línea: {total.toFixed(2)}€</Text>
+          </View>
+        )
+      })}
 
       <View style={styles.summary}>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Base imponible</Text>
-          <Text style={styles.summaryValue}>{base.toFixed(2)}€</Text>
+          <Text style={styles.summaryValue}>{totals.base.toFixed(2)}€</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>IVA ({taxPct}%)</Text>
-          <Text style={styles.summaryValue}>{taxAmount.toFixed(2)}€</Text>
+          <Text style={styles.summaryLabel}>IVA</Text>
+          <Text style={styles.summaryValue}>{totals.tax.toFixed(2)}€</Text>
         </View>
         <View style={[styles.summaryRow, styles.totalRow]}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>{total.toFixed(2)}€</Text>
+          <Text style={styles.totalValue}>{totals.total.toFixed(2)}€</Text>
         </View>
       </View>
 
-      <Text style={styles.label}>Notas (opcional)</Text>
+      <Text style={styles.sectionTitle}>Notas (opcional)</Text>
       <TextInput
-        style={[styles.input, styles.notesInput]}
+        style={styles.notesInput}
         placeholder="Instrucciones extra, referencia..."
         placeholderTextColor="#94A3B8"
         value={notes}
@@ -176,34 +271,57 @@ export default function InvoiceForm({ onSubmit, initialValues }: InvoiceFormProp
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#0F172A', marginBottom: 6 },
-  input: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 14,
-    paddingVertical: 12, fontSize: 16, backgroundColor: '#FFFFFF', marginBottom: 12,
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 10, marginTop: 4 },
+  itemCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, marginBottom: 10,
+    borderWidth: 1, borderColor: '#E2E8F0',
   },
-  notesInput: { minHeight: 80, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', gap: 12 },
-  halfInput: { flex: 1 },
-  taxRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  taxBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center',
+  itemHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  itemDesc: {
+    flex: 1, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 10,
+    paddingVertical: 8, fontSize: 15, backgroundColor: '#F8FAFC',
+  },
+  deleteBtn: { marginLeft: 8, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  deleteBtnText: { fontSize: 16, color: '#EF4444', fontWeight: '600' },
+  itemRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
+  itemField: { flex: 1 },
+  fieldLabel: { fontSize: 11, fontWeight: '600', color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase' },
+  itemInput: {
+    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 10,
+    paddingVertical: 8, fontSize: 15, backgroundColor: '#F8FAFC',
+  },
+  unitPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  unitOption: {
+    paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6,
     backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0',
   },
-  taxBtnActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-  taxBtnText: { fontSize: 15, fontWeight: '600', color: '#475569' },
-  taxBtnTextActive: { color: '#FFFFFF' },
+  unitOptionActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
+  unitOptionText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  unitOptionTextActive: { color: '#FFFFFF' },
+  taxRowSmall: { flexDirection: 'row', gap: 4 },
+  taxOption: {
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6,
+    backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  taxOptionActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
+  taxOptionText: { fontSize: 13, fontWeight: '600', color: '#475569' },
+  taxOptionTextActive: { color: '#FFFFFF' },
+  itemTotal: { fontSize: 13, fontWeight: '600', color: '#2563EB', textAlign: 'right', marginTop: 4 },
   summary: {
     backgroundColor: '#F8FAFC', borderRadius: 12, padding: 16, marginBottom: 16,
     borderWidth: 1, borderColor: '#E2E8F0',
   },
-  summaryRow: {
-    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8,
-  },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   summaryLabel: { fontSize: 14, color: '#64748B' },
   summaryValue: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
   totalRow: { borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8, marginBottom: 0 },
   totalLabel: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
   totalValue: { fontSize: 18, fontWeight: '700', color: '#2563EB' },
+  notesInput: {
+    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 14,
+    paddingVertical: 12, fontSize: 16, backgroundColor: '#FFFFFF', marginBottom: 16,
+    minHeight: 80, textAlignVertical: 'top',
+  },
   submitBtn: {
     backgroundColor: '#2563EB', borderRadius: 12, paddingVertical: 16, alignItems: 'center',
     marginBottom: 40,

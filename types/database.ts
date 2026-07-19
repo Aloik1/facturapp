@@ -8,6 +8,7 @@ export interface Profile {
   phone: string | null
   default_footer: string | null
   plan: 'free' | 'premium' | 'pro'
+  sector: string | null
   stripe_customer_id: string | null
   created_at: string
   updated_at: string
@@ -31,6 +32,7 @@ export interface Client {
 export interface InvoiceItem {
   description: string
   quantity: number
+  unit: string
   unit_price: number
   tax_pct: number
 }
@@ -95,6 +97,29 @@ export type InvoiceUpdate = Partial<InvoiceInsert> & {
   share_expires_at?: string | null
 }
 
+export interface CommonItem {
+  id: string
+  sector: string
+  description: string
+  unit: string
+  unit_price: number
+  tax_pct: number
+  frequency: number
+  created_at: string
+}
+
+export interface UserItem {
+  id: string
+  user_id: string
+  description: string
+  unit: string
+  unit_price: number
+  tax_pct: number
+  frequency: number
+  last_used_at: string
+  created_at: string
+}
+
 export interface SharedInvoiceView {
   client_name: string
   client_nif: string
@@ -135,6 +160,16 @@ export interface Database {
         Row: Invoice
         Insert: InvoiceInsert
         Update: InvoiceUpdate
+      }
+      common_items: {
+        Row: CommonItem
+        Insert: CommonItem
+        Update: Partial<CommonItem>
+      }
+      user_items: {
+        Row: UserItem
+        Insert: Omit<UserItem, 'id' | 'created_at' | 'last_used_at'>
+        Update: Partial<Omit<UserItem, 'id'>>
       }
     }
     Functions: {

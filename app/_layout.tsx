@@ -12,10 +12,11 @@ function RootLayout() {
 
     const inAuthGroup = segments[0] === '(auth)'
     const isUpdatePassword = segments[1] === 'update-password'
+    const isOnboarding = segments[1] === 'onboarding'
 
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login')
-    } else if (session && inAuthGroup && !isUpdatePassword) {
+    } else if (session && inAuthGroup && !isUpdatePassword && !isOnboarding) {
       router.replace('/(tabs)')
     }
   }, [session, loading, error, segments])
