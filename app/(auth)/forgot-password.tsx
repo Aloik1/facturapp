@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native'
+import { useState, useEffect } from 'react'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
 import { Link, router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 
@@ -7,6 +7,13 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const id = setInterval(() => setCooldown((c) => c - 1), 1000)
+    return () => clearInterval(id)
+  }, [cooldown])
 
   async function handleReset() {
     setError('')
@@ -23,17 +30,15 @@ export default function ForgotPasswordScreen() {
         setError(error.message)
         return
       }
-      Alert.alert(
-        'Revisa tu email',
-        'Te hemos enviado un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada (y la de spam).',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
-      )
+      setCooldown(60)
     } catch (err: any) {
       setError(err?.message || 'Error de conexión. Inténtalo de nuevo.')
     } finally {
       setLoading(false)
     }
   }
+
+  const isDisabled = loading || cooldown > 0
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -52,8 +57,14 @@ export default function ForgotPasswordScreen() {
         />
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleReset} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Enviando...' : 'Enviar enlace'}</Text>
+        {cooldown > 0 && (
+          <Text style={styles.successText}>Enlace enviado. Revisa tu email (y la bandeja de spam).</Text>
+        )}
+
+        <TouchableOpacity style={[styles.button, isDisabled && styles.buttonDisabled]} onPress={handleReset} disabled={isDisabled}>
+          <Text style={styles.buttonText}>
+            {loading ? 'Enviando...' : cooldown > 0 ? `Reenviar enlace (${cooldown}s)` : 'Enviar enlace'}
+          </Text>
         </TouchableOpacity>
 
         <Link href="/(auth)/login" style={styles.link}>
@@ -72,6 +83,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, marginBottom: 16, backgroundColor: '#F8FAFC' },
   inputError: { borderColor: '#EF4444' },
   errorText: { color: '#EF4444', fontSize: 13, marginBottom: 12, marginLeft: 4 },
+  successText: { color: '#22C55E', fontSize: 13, marginBottom: 12, marginLeft: 4 },
   button: { backgroundColor: '#2563EB', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },

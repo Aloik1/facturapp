@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native'
+import { useState, useEffect, useRef } from 'react'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
 import { router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 
@@ -22,6 +22,8 @@ export default function UpdatePasswordScreen() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ready, setReady] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const redirectRef = useRef(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -51,11 +53,11 @@ export default function UpdatePasswordScreen() {
         setError(error.message)
         return
       }
-      Alert.alert(
-        'Contraseña actualizada',
-        'Tu contraseña se ha cambiado correctamente. Inicia sesión con tu nueva contraseña.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
-      )
+      setSuccess(true)
+      if (!redirectRef.current) {
+        redirectRef.current = true
+        setTimeout(() => router.replace('/(auth)/login'), 1500)
+      }
     } catch (err: any) {
       setError(err?.message || 'Error de conexión. Inténtalo de nuevo.')
     } finally {
@@ -75,6 +77,17 @@ export default function UpdatePasswordScreen() {
               <Text style={styles.buttonText}>Solicitar nuevo enlace</Text>
             </TouchableOpacity>
           ) : null}
+        </View>
+      </View>
+    )
+  }
+
+  if (success) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Contraseña actualizada</Text>
+          <Text style={styles.subtitle}>Redirigiendo a iniciar sesión...</Text>
         </View>
       </View>
     )
