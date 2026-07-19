@@ -46,20 +46,26 @@ export default function ProfileScreen() {
       return
     }
     setSaving(true)
-    const { error } = await upsertProfile(session!.user.id, {
-      business_name: businessName.trim(),
-      business_nif: businessNif.trim(),
-      address: address.trim(),
-      phone: phone.trim() || null,
-      sector,
-    })
-    setSaving(false)
-    if (error) {
-      Alert.alert('Error', error.message)
-    } else {
-      setSuccess(true)
-      clearTimeout(successRef.current)
-      successRef.current = setTimeout(() => setSuccess(false), 3000)
+    try {
+      const { error } = await upsertProfile(session!.user.id, {
+        business_name: businessName.trim(),
+        business_nif: businessNif.trim(),
+        address: address.trim(),
+        phone: phone.trim() || null,
+        sector,
+      })
+      setSaving(false)
+      if (error) {
+        Alert.alert('Error', error.message)
+      } else {
+        setSuccess(true)
+        clearTimeout(successRef.current)
+        successRef.current = setTimeout(() => setSuccess(false), 3000)
+      }
+    } catch (err) {
+      setSaving(false)
+      Alert.alert('Error inesperado', (err as Error)?.message || 'Inténtalo de nuevo')
+      console.error('handleSave error:', err)
     }
   }
 
