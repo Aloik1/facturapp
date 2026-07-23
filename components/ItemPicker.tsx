@@ -49,35 +49,36 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
 
       {showSuggestions && (
         <View style={styles.suggestions}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item) => ('user_id' in item ? 'u-' + item.id : 'c-' + item.id)}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-            ListHeaderComponent={() => query.length === 0 ? (
-              <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
-                <Text style={styles.blankBtnText}>+ Partida vacía</Text>
-              </TouchableOpacity>
-            ) : null}
-            renderItem={({ item }) => (
-              <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSelect(item)}>
-                <View style={styles.suggestionLeft}>
-                  <Text style={styles.suggestionDesc}>{item.description}</Text>
-                  <Text style={styles.suggestionMeta}>
-                    {item.unit_price > 0 ? `${formatPrice(item.unit_price)} / ${item.unit}` : 'Sin precio'}
+          {query.length === 0 && (
+            <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
+              <Text style={styles.blankBtnText}>+ Partida vacía</Text>
+            </TouchableOpacity>
+          )}
+          {suggestions.length > 0 ? (
+            <FlatList
+              data={suggestions}
+              keyExtractor={(item) => ('user_id' in item ? 'u-' + item.id : 'c-' + item.id)}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSelect(item)}>
+                  <View style={styles.suggestionLeft}>
+                    <Text style={styles.suggestionDesc}>{item.description}</Text>
+                    <Text style={styles.suggestionMeta}>
+                      {item.unit_price > 0 ? `${formatPrice(item.unit_price)} / ${item.unit}` : 'Sin precio'}
+                    </Text>
+                  </View>
+                  <Text style={styles.suggestionBadge}>
+                    {'user_id' in item ? 'Tuyo' : item.sector.slice(0, 4)}
                   </Text>
-                </View>
-                <Text style={styles.suggestionBadge}>
-                  {'user_id' in item ? 'Tuyo' : item.sector.slice(0, 4)}
-                </Text>
-              </TouchableOpacity>
-            )}
-            ListFooterComponent={() => query.length > 0 && suggestions.length === 0 ? (
-              <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
-                <Text style={styles.blankBtnText}>+ Crear "{query}"</Text>
-              </TouchableOpacity>
-            ) : null}
-          />
+                </TouchableOpacity>
+              )}
+            />
+          ) : query.length > 0 ? (
+            <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
+              <Text style={styles.blankBtnText}>+ Crear "{query}"</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       )}
     </View>
