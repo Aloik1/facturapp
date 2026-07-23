@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
 import { Link, router } from 'expo-router'
 import { signIn } from '../../services/auth'
+import { colors, radii, shadows, typography } from '../../lib/theme'
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('')
@@ -12,25 +13,19 @@ export default function LoginScreen() {
   async function handleLogin() {
     setError('')
     if (!email.trim() || !password) {
-      setError('Email y contraseña son obligatorios')
+      setError('Completa todos los campos')
       return
     }
     setLoading(true)
     try {
       const { error } = await signIn(email.trim(), password)
       if (error) {
-        if (error.message.includes('Email not confirmed')) {
-          setError('Email no confirmado. Revisa tu bandeja de entrada.')
-        } else if (error.message.includes('Invalid login credentials')) {
-          setError('Email o contraseña incorrectos')
-        } else {
-          setError(error.message)
-        }
+        setError('Email o contraseña incorrectos')
         return
       }
       router.replace('/(tabs)')
-    } catch (err: any) {
-      setError(err?.message || 'Error de conexión. Inténtalo de nuevo.')
+    } catch {
+      setError('Error de conexión. Inténtalo de nuevo.')
     } finally {
       setLoading(false)
     }
@@ -39,57 +34,104 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.content}>
-        <Text style={styles.title}>facturap</Text>
-        <Text style={styles.subtitle}>Inicia sesión en tu cuenta</Text>
+        <View style={styles.card}>
+          <View style={styles.wordmark}>
+            <Text style={styles.wordmarkText}>Facturapp</Text>
+            <Text style={styles.wordmarkSub}>Facturación para autónomos</Text>
+          </View>
 
-        <TextInput
-          style={[styles.input, error && styles.inputError]}
-          placeholder="Email"
-          placeholderTextColor="#94A3B8"
-          value={email}
-          onChangeText={(v) => { setEmail(v); setError('') }}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        <TextInput
-          style={[styles.input, error && styles.inputError]}
-          placeholder="Contraseña"
-          placeholderTextColor="#94A3B8"
-          value={password}
-          onChangeText={(v) => { setPassword(v); setError('') }}
-          secureTextEntry
-        />
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <TextInput
+            style={[styles.input, error ? styles.inputError : null]}
+            placeholder="Correo electrónico"
+            placeholderTextColor={colors.inputPlaceholder}
+            value={email}
+            onChangeText={() => setError('')}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
 
-        <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleLogin} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
-        </TouchableOpacity>
+          <TextInput
+            style={[styles.input, error ? styles.inputError : null]}
+            placeholder="Contraseña"
+            placeholderTextColor={colors.inputPlaceholder}
+            value={password}
+            onChangeText={() => setError('')}
+            secureTextEntry
+          />
 
-        <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
-          <Text style={styles.forgotLinkText}>¿Olvidaste tu contraseña?</Text>
-        </Link>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Link href="/(auth)/register" style={styles.link}>
-          <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
-        </Link>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Link href="/(auth)/register" style={styles.link}>
+              <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
+            </Link>
+            <Link href="/(auth)/forgot-password" style={[styles.link, { marginTop: 8 }]}>
+              <Text style={[styles.linkText, { color: colors.textTertiary }]}>¿Olvidaste tu contraseña?</Text>
+            </Link>
+          </View>
+        </View>
       </View>
     </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  title: { fontSize: 32, fontWeight: '700', color: '#2563EB', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 32 },
-  input: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, marginBottom: 16, backgroundColor: '#F8FAFC' },
-  inputError: { borderColor: '#EF4444' },
-  errorText: { color: '#EF4444', fontSize: 13, marginBottom: 12, marginLeft: 4 },
-  button: { backgroundColor: '#2563EB', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: colors.bgCard,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 40,
+    ...shadows.card,
+  },
+  wordmark: { alignItems: 'center', marginBottom: 40 },
+  wordmarkText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.accent,
+    letterSpacing: -0.02,
+  },
+  wordmarkSub: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+  input: {
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: radii.sm,
+    padding: 14,
+    fontSize: 15,
+    color: colors.text,
+    marginBottom: 16,
+  },
+  inputError: { borderColor: colors.danger },
+  errorText: { color: colors.danger, fontSize: 13, marginBottom: 12, marginLeft: 4 },
+  button: {
+    backgroundColor: colors.accent,
+    borderRadius: radii.sm,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  forgotLink: { marginTop: 16, alignItems: 'center' },
-  forgotLinkText: { color: '#64748B', fontSize: 14 },
-  link: { marginTop: 24, alignItems: 'center' },
-  linkText: { color: '#2563EB', fontSize: 14 },
+  buttonText: { color: colors.textInverse, fontSize: 16, fontWeight: '600' },
+  footer: { alignItems: 'center', marginTop: 24 },
+  link: { alignItems: 'center' },
+  linkText: { color: colors.textSecondary, fontSize: 14 },
 })

@@ -2,19 +2,17 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native'
 import { getSuggestions } from '../services/items'
 import type { CommonItem, UserItem } from '../types/database'
+import { colors, radii } from '../lib/theme'
 
 type SuggestionItem = (UserItem | CommonItem) & { _type: 'user' | 'common' }
 
 interface ItemPickerProps {
-  userId: string
-  sector: string
+  userId: string; sector: string
   onSelect: (item: { description: string; unit: string; unit_price: number; tax_pct: number }) => void
   onAddBlank: () => void
 }
 
-function formatPrice(n: number) {
-  return n.toFixed(2) + '€'
-}
+function formatPrice(n: number) { return n.toFixed(2) + '€' }
 
 export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: ItemPickerProps) {
   const [query, setQuery] = useState('')
@@ -25,69 +23,29 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
   const blurRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
-    if (!focused) {
-      setShowSuggestions(false)
-      return
-    }
-
+    if (!focused) { setShowSuggestions(false); return }
     clearTimeout(debounceRef.current)
-
-    if (query.length === 0) {
-      debounceRef.current = setTimeout(async () => {
-        const items = await getSuggestions(userId, sector)
-        setSuggestions(items.map((i) => ({ ...i, _type: 'user' in i ? 'user' as const : 'common' as const })))
-        setShowSuggestions(items.length > 0)
-      }, 200)
-      return
-    }
-
     debounceRef.current = setTimeout(async () => {
-      const items = await getSuggestions(userId, sector, query)
-      setSuggestions(items.map((i) => ({ ...i, _type: 'user' in i ? 'user' as const : 'common' as const })))
-      setShowSuggestions(items.length > 0)
-    }, 300)
+      const items = await getSuggestions(userId, sector, query || undefined)
+      setSuggestions(items.map((i) => ({ ...i, _type: 'user_id' in i ? 'user' as const : 'common' as const })))
+      setShowSuggestions(items.length > 0 || query.length === 0)
+    }, query ? 300 : 200)
   }, [query, userId, sector, focused])
 
-  function handleFocus() {
-    setFocused(true)
-  }
-
-  function handleBlur() {
-    blurRef.current = setTimeout(() => {
-      setFocused(false)
-    }, 200)
-  }
+  function handleFocus() { setFocused(true) }
+  function handleBlur() { blurRef.current = setTimeout(() => setFocused(false), 200) }
 
   function handleSelect(item: SuggestionItem) {
-    onSelect({
-      description: item.description,
-      unit: item.unit,
-      unit_price: item.unit_price,
-      tax_pct: item.tax_pct,
-    })
-    setQuery('')
-    setFocused(false)
-    clearTimeout(blurRef.current)
+    onSelect({ description: item.description, unit: item.unit, unit_price: item.unit_price, tax_pct: item.tax_pct })
+    setQuery(''); setFocused(false); clearTimeout(blurRef.current)
   }
 
-  function handleAddBlank() {
-    onAddBlank()
-    setQuery('')
-    setFocused(false)
-    clearTimeout(blurRef.current)
-  }
+  function handleAddBlank() { onAddBlank(); setQuery(''); setFocused(false); clearTimeout(blurRef.current) }
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        placeholder="Buscar partida..."
-        placeholderTextColor="#94A3B8"
-        value={query}
-        onChangeText={(t) => { setQuery(t) }}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-      />
+      <TextInput style={styles.input} placeholder="Buscar partida..." placeholderTextColor={colors.inputPlaceholder}
+        value={query} onChangeText={(t) => setQuery(t)} onFocus={handleFocus} onBlur={handleBlur} />
 
       {showSuggestions && (
         <View style={styles.suggestions}>
@@ -100,22 +58,19 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
                 <Text style={styles.blankBtnText}>+ Partida vacía</Text>
               </TouchableOpacity>
             ) : null}
-            renderItem={({ item }) => {
-              const total = item.unit_price
-              return (
-                <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSelect(item)}>
-                  <View style={styles.suggestionLeft}>
-                    <Text style={styles.suggestionDesc}>{item.description}</Text>
-                    <Text style={styles.suggestionMeta}>
-                      {item.unit_price > 0 ? `${formatPrice(item.unit_price)} / ${item.unit}` : 'Sin precio'}
-                    </Text>
-                  </View>
-                  <Text style={styles.suggestionBadge}>
-                    {'user_id' in item ? 'Tuyo' : item.sector.slice(0, 4)}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSelect(item)}>
+                <View style={styles.suggestionLeft}>
+                  <Text style={styles.suggestionDesc}>{item.description}</Text>
+                  <Text style={styles.suggestionMeta}>
+                    {item.unit_price > 0 ? `${formatPrice(item.unit_price)} / ${item.unit}` : 'Sin precio'}
                   </Text>
-                </TouchableOpacity>
-              )
-            }}
+                </View>
+                <Text style={styles.suggestionBadge}>
+                  {'user_id' in item ? 'Tuyo' : item.sector.slice(0, 4)}
+                </Text>
+              </TouchableOpacity>
+            )}
             ListFooterComponent={() => (
               <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
                 <Text style={styles.blankBtnText}>+ Partida vacía</Text>
@@ -137,24 +92,27 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
 const styles = StyleSheet.create({
   container: { marginBottom: 12, zIndex: 10 },
   input: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 14,
-    paddingVertical: 12, fontSize: 16, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colors.inputBorder, borderRadius: radii.sm, paddingHorizontal: 14,
+    paddingVertical: 12, fontSize: 16, color: colors.text, backgroundColor: colors.inputBg,
   },
   suggestions: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, backgroundColor: '#FFFFFF',
-    marginTop: 4, maxHeight: 260,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm,
+    backgroundColor: colors.bgCard, marginTop: 4, maxHeight: 260,
   },
   suggestionItem: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   suggestionLeft: { flex: 1 },
-  suggestionDesc: { fontSize: 15, fontWeight: '500', color: '#0F172A' },
-  suggestionMeta: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  suggestionBadge: { fontSize: 11, color: '#94A3B8', backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
+  suggestionDesc: { fontSize: 15, fontWeight: '500', color: colors.text },
+  suggestionMeta: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+  suggestionBadge: {
+    fontSize: 11, color: colors.textTertiary, backgroundColor: colors.bgTertiary,
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, overflow: 'hidden',
+  },
   blankBtn: {
     paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center',
-    borderTopWidth: 1, borderTopColor: '#E2E8F0',
+    borderTopWidth: 1, borderTopColor: colors.border,
   },
-  blankBtnText: { fontSize: 14, fontWeight: '600', color: '#2563EB' },
+  blankBtnText: { fontSize: 14, fontWeight: '600', color: colors.accent },
 })
