@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Platform } from 'react-native'
 import { getSuggestions } from '../services/items'
 import type { CommonItem, UserItem } from '../types/database'
 import { colors, radii } from '../lib/theme'
@@ -28,7 +28,7 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
     debounceRef.current = setTimeout(async () => {
       const items = await getSuggestions(userId, sector, query || undefined)
       setSuggestions(items.map((i) => ({ ...i, _type: 'user_id' in i ? 'user' as const : 'common' as const })))
-      setShowSuggestions(items.length > 0 || query.length === 0)
+      setShowSuggestions(true)
     }, query ? 300 : 200)
   }, [query, userId, sector, focused])
 
@@ -98,6 +98,7 @@ const styles = StyleSheet.create({
   suggestions: {
     borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm,
     backgroundColor: colors.bgCard, marginTop: 4, maxHeight: 260,
+    ...(Platform.OS === 'web' ? { boxShadow: '0 8px 32px rgba(0,0,0,0.4)' } : {}),
   },
   suggestionItem: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
