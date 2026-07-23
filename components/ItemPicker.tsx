@@ -9,7 +9,7 @@ type SuggestionItem = (UserItem | CommonItem) & { _type: 'user' | 'common' }
 interface ItemPickerProps {
   userId: string; sector: string
   onSelect: (item: { description: string; unit: string; unit_price: number; tax_pct: number }) => void
-  onAddBlank: () => void
+  onAddBlank: (query?: string) => void
 }
 
 function formatPrice(n: number) { return n.toFixed(2) + '€' }
@@ -40,7 +40,7 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
     setQuery(''); setFocused(false); clearTimeout(blurRef.current)
   }
 
-  function handleAddBlank() { onAddBlank(); setQuery(''); setFocused(false); clearTimeout(blurRef.current) }
+  function handleAddBlank() { onAddBlank(query); setQuery(''); setFocused(false); clearTimeout(blurRef.current) }
 
   return (
     <View style={styles.container}>

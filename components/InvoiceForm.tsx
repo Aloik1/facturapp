@@ -46,9 +46,13 @@ export default function InvoiceForm({ userId, sector, onSubmit }: InvoiceFormPro
     { base: 0, tax: 0, total: 0 }
   )
 
-  function addLine(item?: { description: string; unit: string; unit_price: number; tax_pct: number }) {
+  function addLine(item?: { description: string; unit: string; unit_price: number; tax_pct: number }, prefillDesc?: string) {
     if (item) setLines((prev) => [...prev, { id: nextLineId(), description: item.description, quantity: '1', unit: item.unit, unitPrice: item.unit_price > 0 ? item.unit_price.toFixed(2) : '', taxPct: item.tax_pct }])
-    else setLines((prev) => [...prev, newBlankLine()])
+    else {
+      const blank = newBlankLine()
+      if (prefillDesc) blank.description = prefillDesc
+      setLines((prev) => [...prev, blank])
+    }
   }
 
   function updateLine(id: string, updates: Partial<LineItem>) { setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l))) }
@@ -76,7 +80,7 @@ export default function InvoiceForm({ userId, sector, onSubmit }: InvoiceFormPro
 
       <Text style={styles.sectionTitle}>Partidas</Text>
 
-      <ItemPicker userId={userId} sector={sector} onSelect={(item) => addLine(item)} onAddBlank={() => addLine()} />
+      <ItemPicker userId={userId} sector={sector} onSelect={(item) => addLine(item)} onAddBlank={(desc?: string) => addLine(undefined, desc)} />
 
       {lines.map((line) => {
         const { base, total } = calcLine(line)
