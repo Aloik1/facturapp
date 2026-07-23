@@ -2,29 +2,31 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native'
 import { searchClients, createClient } from '../services/clients'
 import type { Client } from '../types/database'
+import { colors, radii } from '../lib/theme'
 
 interface ClientPickerProps {
   clientName: string
   clientNif: string
   onNameChange: (name: string) => void
   onNifChange: (nif: string) => void
-  onClientSelect?: (client: Client) => void
 }
 
-export default function ClientPicker({
-  clientName,
-  clientNif,
-  onNameChange,
-  onNifChange,
-  onClientSelect,
-}: ClientPickerProps) {
+export default function ClientPicker({ clientName, clientNif, onNameChange, onNifChange }: ClientPickerProps) {
   const [suggestions, setSuggestions] = useState<Client[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [formName, setFormName] = useState(clientName)
+  const [formNif, setFormNif] = useState(clientNif)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const blurRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
-    if (clientName.length < 2) {
+    setFormName(clientName)
+    setFormNif(clientNif)
+  }, [clientName, clientNif])
+
+  useEffect(() => {
+    if (formName.length < 2) {
       setSuggestions([])
       setShowSuggestions(false)
       return
@@ -32,28 +34,37 @@ export default function ClientPicker({
 
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
-      const { data } = await searchClients(clientName)
+      const { data } = await searchClients(formName)
       if (data) {
         setSuggestions(data)
         setShowSuggestions(data.length > 0)
       }
     }, 300)
-  }, [clientName])
+  }, [formName])
 
   function handleSelect(client: Client) {
     onNameChange(client.name)
     onNifChange(client.nif)
     setShowSuggestions(false)
-    onClientSelect?.(client)
   }
 
-  async function handleSaveAsClient() {
-    if (!clientName.trim() || !clientNif.trim()) return
-    setSaving(true)
-    const { data } = await createClient({
+  function handleFocus() {
+    if (formName.length >= 2) setShowSuggestions(suggestions.length > 0)
+  }
+
+  function handleBlur() {
+    blurRef.current = setTimeout(() => {
+      setShowSuggestions(false)
+    }, 200)
+  }
+
+  async function handleCreate() {
+    if (!formName.trim() || !formNif.trim()) return
+    setCreating(true)
+    await createClient({
       user_id: '',
-      name: clientName.trim(),
-      nif: clientNif.trim(),
+      name: formName.trim(),
+      nif: formNif.trim(),
       email: null,
       phone: null,
       address: null,
@@ -61,20 +72,33 @@ export default function ClientPicker({
       default_payment_days: null,
       notes: null,
     })
-    setSaving(false)
-    if (data) onClientSelect?.(data)
+    setCreating(false)
+    setShowSuggestions(false)
   }
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Cliente</Text>
+
       <TextInput
         style={styles.input}
         placeholder="Nombre del cliente"
-        placeholderTextColor="#94A3B8"
-        value={clientName}
-        onChangeText={(t) => { onNameChange(t); setShowSuggestions(true) }}
-        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+        placeholderTextColor={colors.inputPlaceholder}
+        value={formName}
+        onChangeText={(t) => { onNameChange(t); setShowSuggestions(t.length >= 2) }}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="NIF / CIF"
+        placeholderTextColor={colors.inputPlaceholder}
+        value={formNif}
+        onChangeText={onNifChange}
+        autoCapitalize="characters"
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       />
 
       {showSuggestions && (
@@ -82,56 +106,70 @@ export default function ClientPicker({
           <FlatList
             data={suggestions}
             keyExtractor={(c) => c.id}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.suggestionItem} onPress={() => handleSelect(item)}>
                 <Text style={styles.suggestionName}>{item.name}</Text>
                 <Text style={styles.suggestionNif}>{item.nif}</Text>
               </TouchableOpacity>
             )}
-            keyboardShouldPersistTaps="handled"
+            ListFooterComponent={() => (
+              <TouchableOpacity
+                style={styles.createBtn}
+                onPress={handleCreate}
+                disabled={!formName.trim() || !formNif.trim() || creating}
+              >
+                <Text style={styles.createBtnText}>
+                  {creating ? 'Guardando...' : `+ Guardar "${formName}" como cliente`}
+                </Text>
+              </TouchableOpacity>
+            )}
           />
         </View>
-      )}
-
-      <TextInput
-        style={styles.input}
-        placeholder="NIF / CIF"
-        placeholderTextColor="#94A3B8"
-        value={clientNif}
-        onChangeText={onNifChange}
-        autoCapitalize="characters"
-      />
-
-      {clientName.trim().length > 0 && clientNif.trim().length > 0 && suggestions.length === 0 && (
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsClient} disabled={saving}>
-          <Text style={styles.saveBtnText}>
-            {saving ? 'Guardando...' : 'Guardar como cliente'}
-          </Text>
-        </TouchableOpacity>
       )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#0F172A', marginBottom: 6 },
+  container: { marginBottom: 16, zIndex: 20 },
+  label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 14,
-    paddingVertical: 12, fontSize: 16, backgroundColor: '#FFFFFF', marginBottom: 8,
+    backgroundColor: colors.inputBg,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: radii.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: colors.text,
+    marginBottom: 8,
   },
   suggestions: {
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, backgroundColor: '#FFFFFF',
-    marginBottom: 8, maxHeight: 200,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.bgCard,
+    marginBottom: 8,
+    maxHeight: 200,
   },
   suggestionItem: {
-    paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  suggestionName: { fontSize: 15, fontWeight: '500', color: '#0F172A' },
-  suggestionNif: { fontSize: 13, color: '#64748B', marginTop: 2 },
-  saveBtn: {
-    backgroundColor: '#F1F5F9', borderRadius: 8, paddingVertical: 8, alignItems: 'center',
-    borderWidth: 1, borderColor: '#E2E8F0',
+  suggestionName: { fontSize: 15, fontWeight: '500', color: colors.text },
+  suggestionNif: { fontSize: 13, color: colors.textTertiary },
+  createBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  saveBtnText: { fontSize: 13, fontWeight: '600', color: '#475569' },
+  createBtnText: { fontSize: 14, fontWeight: '600', color: colors.accent },
 })
