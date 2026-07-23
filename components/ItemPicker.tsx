@@ -72,14 +72,13 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
                 </Text>
               </TouchableOpacity>
             )}
+            ListFooterComponent={() => query.length > 0 && suggestions.length === 0 ? (
+              <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
+                <Text style={styles.blankBtnText}>+ Crear "{query}"</Text>
+              </TouchableOpacity>
+            ) : null}
           />
         </View>
-      )}
-
-      {query.length > 0 && !showSuggestions && (
-        <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
-          <Text style={styles.blankBtnText}>+ Crear "{query}"</Text>
-        </TouchableOpacity>
       )}
     </View>
   )
