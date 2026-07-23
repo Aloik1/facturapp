@@ -45,7 +45,7 @@ export default function LoginScreen() {
             placeholder="Correo electrónico"
             placeholderTextColor={colors.inputPlaceholder}
             value={email}
-            onChangeText={() => setError('')}
+            onChangeText={(v) => { setEmail(v); setError('') }}
             autoCapitalize="none"
             keyboardType="email-address"
           />
@@ -55,7 +55,7 @@ export default function LoginScreen() {
             placeholder="Contraseña"
             placeholderTextColor={colors.inputPlaceholder}
             value={password}
-            onChangeText={() => setError('')}
+            onChangeText={(v) => { setPassword(v); setError('') }}
             secureTextEntry
           />
 
