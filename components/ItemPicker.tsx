@@ -41,8 +41,6 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
       return
     }
 
-    if (query.length < 2) return
-
     debounceRef.current = setTimeout(async () => {
       const items = await getSuggestions(userId, sector, query)
       setSuggestions(items.map((i) => ({ ...i, _type: 'user' in i ? 'user' as const : 'common' as const })))
@@ -97,6 +95,11 @@ export default function ItemPicker({ userId, sector, onSelect, onAddBlank }: Ite
             data={suggestions}
             keyExtractor={(item) => ('user_id' in item ? 'u-' + item.id : 'c-' + item.id)}
             keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={() => query.length === 0 ? (
+              <TouchableOpacity style={styles.blankBtn} onPress={handleAddBlank}>
+                <Text style={styles.blankBtnText}>+ Partida vacía</Text>
+              </TouchableOpacity>
+            ) : null}
             renderItem={({ item }) => {
               const total = item.unit_price
               return (

@@ -5,8 +5,7 @@
 alter table public.profiles add column if not exists sector text;
 alter table public.profiles add column if not exists phone text;
 
--- Añadir unique constraint en user_id para que upsert() funcione
-alter table public.profiles add constraint profiles_user_id_unique unique (user_id);
+-- Nota: unique(user_id) ya existe desde 002_emission.sql, no añadir de nuevo
 
 -- Backfill: usuarios existentes sin sector → 'otro'
 update public.profiles set sector = 'otro' where sector is null;

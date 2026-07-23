@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, StyleSheet, Alert, ActivityIndicator, Text } from 'react-native'
+import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native'
 import { router } from 'expo-router'
 import { useAuth } from '../../lib/AuthContext'
 import { createInvoice } from '../../services/invoices'
@@ -37,14 +37,7 @@ export default function NewInvoiceScreen() {
     })
 
     if (result.data) {
-      Alert.alert(
-        'Factura creada',
-        `Factura ${result.data.invoice_number} creada correctamente.`,
-        [
-          { text: 'Ver factura', onPress: () => router.replace(`/invoice/${result.data!.id}`) },
-          { text: 'Seguir', style: 'cancel' },
-        ]
-      )
+      router.replace(`/invoice/${result.data.id}`)
     }
 
     return { error: result.error }

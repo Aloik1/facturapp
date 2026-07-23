@@ -50,7 +50,7 @@ function calcLine(line: LineItem) {
 export default function InvoiceForm({ userId, sector, onSubmit }: InvoiceFormProps) {
   const [clientName, setClientName] = useState('')
   const [clientNif, setClientNif] = useState('')
-  const [lines, setLines] = useState<LineItem[]>([newBlankLine()])
+  const [lines, setLines] = useState<LineItem[]>([])
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
 

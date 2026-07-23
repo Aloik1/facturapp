@@ -1,8 +1,9 @@
 import { View, Text, StyleSheet } from 'react-native'
-import type { Invoice, SharedInvoiceView } from '../types/database'
+import type { Invoice, Profile, SharedInvoiceView } from '../types/database'
 
 interface InvoicePreviewProps {
   invoice: Partial<Invoice> | SharedInvoiceView
+  profile?: Profile
   showBusiness?: boolean
 }
 
@@ -15,19 +16,19 @@ function isSharedView(inv: any): inv is SharedInvoiceView {
   return 'business_name' in inv
 }
 
-export default function InvoicePreview({ invoice, showBusiness }: InvoicePreviewProps) {
+export default function InvoicePreview({ invoice, profile, showBusiness }: InvoicePreviewProps) {
   const items = invoice.items as Array<{ description: string; quantity: number; unit_price: number; tax_pct: number }> | null
-  const business = isSharedView(invoice) ? invoice : null
+  const sharedView = isSharedView(invoice) ? invoice : null
 
   return (
     <View style={styles.container}>
-      {showBusiness && business && (
+      {showBusiness && (sharedView || profile) && (
         <View style={styles.businessSection}>
-          <Text style={styles.businessName}>{business.business_name}</Text>
-          <Text style={styles.businessNif}>{business.business_nif}</Text>
-          {business.business_address && (
-            <Text style={styles.businessDetail}>{business.business_address}</Text>
-          )}
+          <Text style={styles.businessName}>{sharedView?.business_name ?? profile!.business_name}</Text>
+          <Text style={styles.businessNif}>{sharedView?.business_nif ?? profile!.business_nif}</Text>
+          {(sharedView?.business_address ?? profile?.address) ? (
+            <Text style={styles.businessDetail}>{sharedView?.business_address ?? profile!.address}</Text>
+          ) : null}
         </View>
       )}
 
@@ -56,6 +57,7 @@ export default function InvoicePreview({ invoice, showBusiness }: InvoicePreview
             <View style={styles.tableHeader}>
               <Text style={[styles.th, styles.colDesc]}>Descripción</Text>
               <Text style={[styles.th, styles.colQty]}>Cant</Text>
+              <Text style={[styles.th, styles.colUnit]}>Ud</Text>
               <Text style={[styles.th, styles.colPrice]}>Precio</Text>
               <Text style={[styles.th, styles.colTotal]}>Total</Text>
             </View>
@@ -63,6 +65,7 @@ export default function InvoicePreview({ invoice, showBusiness }: InvoicePreview
               <View key={i} style={styles.tableRow}>
                 <Text style={[styles.td, styles.colDesc]}>{item.description}</Text>
                 <Text style={[styles.td, styles.colQty]}>{item.quantity}</Text>
+                <Text style={[styles.td, styles.colUnit]}>{item.unit}</Text>
                 <Text style={[styles.td, styles.colPrice]}>{formatCurrency(item.unit_price)}</Text>
                 <Text style={[styles.td, styles.colTotal]}>
                   {formatCurrency(item.quantity * item.unit_price)}
@@ -125,8 +128,8 @@ export default function InvoicePreview({ invoice, showBusiness }: InvoicePreview
         </View>
       )}
 
-      {showBusiness && business?.default_footer && (
-        <Text style={styles.footer}>{business.default_footer}</Text>
+      {showBusiness && (sharedView?.default_footer ?? profile?.default_footer) && (
+        <Text style={styles.footer}>{sharedView?.default_footer ?? profile!.default_footer}</Text>
       )}
     </View>
   )
@@ -156,9 +159,10 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   td: { fontSize: 14, color: '#0F172A' },
   colDesc: { flex: 3 },
-  colQty: { flex: 1, textAlign: 'center' },
-  colPrice: { flex: 1.5, textAlign: 'right' },
-  colTotal: { flex: 1.5, textAlign: 'right' },
+  colQty: { flex: 0.7, textAlign: 'center' },
+  colUnit: { flex: 0.7, textAlign: 'center' },
+  colPrice: { flex: 1.2, textAlign: 'right' },
+  colTotal: { flex: 1.2, textAlign: 'right' },
   itemsText: { fontSize: 15, color: '#0F172A' },
   totals: {
     borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 12, marginBottom: 16,
